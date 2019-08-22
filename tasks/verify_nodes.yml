@@ -2,7 +2,7 @@
 
 - name: Get number of nodes
   set_fact:
-    __node_number: "{{ groups['kubernetes']| list | length }}"
+    __node_number: "{{ play_hosts| list | length }}"
   run_once: true
 
 - name: Collect product UUID
