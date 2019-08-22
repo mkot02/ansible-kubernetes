@@ -1,0 +1,52 @@
+---
+
+- name: Get number of nodes
+  set_fact:
+    __node_number: "{{ groups['kubernetes']| list | length }}"
+  run_once: true
+
+- name: Collect product UUID
+  shell: "cat /sys/class/dmi/id/product_uuid"
+  register: __product_uuid
+  changed_when: False
+
+- name: Group product UUIDs and MAC addresses
+  set_fact:
+    __mac_addresses: "{{ __mac_addresses | default([]) }} + {{ [ hostvars[item].ansible_default_ipv4.macaddress ] }}" 
+    __product_uuids: "{{ __product_uuids | default([]) }} + {{ [ hostvars[item].__product_uuid ] }}"
+  loop: "{{ play_hosts }}"
+  run_once: true
+
+- name: Check product UUID and MAC
+  assert:
+    that: 
+      - "{{ __product_uuids | length }} == {{ __node_number }}"
+      - "{{ __mac_addresses | length }} == {{ __node_number }}"
+  run_once: true
+
+- name: Remove swapfile from /etc/fstab
+  mount:
+    path: swap
+    state: absent
+
+- name: Disable swap
+  command: swapoff -a
+
+- name: Check mandatory variables for group
+  assert:
+    that:
+      - "{{ item }} is defined"
+    fail_msg: "Mandatory group variable {{ item }} is not defined"
+    quiet: yes
+  loop:
+    - k8s_pod_network_cidr
+  run_once: true
+
+- name: Check mandatory variables for hosts
+  assert:
+    that:
+      - "{{ item }} is defined"
+    fail_msg: "Mandatory host variable {{ item }} is not defined"
+    quiet: yes
+  loop:
+    - k8s_role

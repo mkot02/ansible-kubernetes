@@ -1,0 +1,18 @@
+---
+
+- name: Enable and start kubelet service
+  systemd:
+    name: "{{ kubelet_service }}"
+    enabled: yes
+    state: started
+
+- name: Restart kubelet service
+  systemd:
+    name: "{{ kubelet_service }}"
+    daemon_reload: yes
+    state: restarted
+
+- name: Stop kubelet service
+  systemd:
+    name: "{{ kubelet_service }}"
+    state: stopped

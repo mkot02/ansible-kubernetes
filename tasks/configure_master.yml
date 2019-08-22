@@ -1,0 +1,70 @@
+---
+
+
+- name: Check if Kubernetes has already been initialized.
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_init_status
+
+
+# Initialize master node
+- block:
+  - name: Initialize master node with kubeadm
+    command: "kubeadm init --apiserver-advertise-address={{ ansible_ssh_host }} --pod-network-cidr={{ k8s_pod_network_cidr }}"
+    register: __k8s_master_init_status
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ https_proxy }}"
+      no_proxy: "{{ no_proxy }}"
+  
+  - name: Display init resutls
+    debug:
+      var: __k8s_master_init_status
+  when: not k8s_init_status.stat.exists # end of block
+
+
+- name: Create ~/.kube directory
+  file:
+    path: ~/.kube
+    state: directory
+
+- name: Symlink the kubectl admin.conf to ~/.kube/conf.
+  file:
+    src: /etc/kubernetes/admin.conf
+    dest: ~/.kube/config
+    state: link
+
+- name: Install pod network addon
+  command: "kubectl apply -f {{ k8s_addon_network_url }}"
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+  register: __k8s_addon_network_status
+  changed_when: "'created' in __k8s_addon_network_status.stdout"
+
+- name: Untaint master node (allow pods on master)
+  command: "kubectl taint nodes --all node-role.kubernetes.io/master-"
+  register: __k8s_untaint_status
+  failed_when: False
+  changed_when: "'untainted' in __k8s_untaint_status.stdout"
+  when: k8s_allow_pods_on_master|bool
+
+- name: Get join command from master
+  command: "kubeadm token create --print-join-command"
+  register: k8s_join_command_result
+  changed_when: False
+
+- name: Get cluster nodes from master
+  command: "kubectl get nodes -o name"
+  register: k8s_cluster_nodes
+  changed_when: False
+
+- name: Set facts for all nodes
+  set_fact:
+    k8s_join_command: "{{ k8s_join_command_result.stdout }}"
+    k8s_cluster_node: "{% if item in k8s_cluster_nodes.stdout %}True{% else %}False{% endif %}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: True
+  loop: "{{ play_hosts }}"

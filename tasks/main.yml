@@ -1,0 +1,21 @@
+---
+
+
+- import_tasks: verify_nodes.yml
+  tags:
+    - pre_install
+
+- import_tasks: install_k8s.yml
+  tags:
+    - install
+
+- import_tasks: configure_master.yml
+  tags:
+    - install
+  when: k8s_role == 'master'
+
+- name: Join worker to kubernetes cluster
+  command: "{{ k8s_join_command }}"
+  when:
+    - k8s_role == 'worker'
+    - not k8s_cluster_node|bool

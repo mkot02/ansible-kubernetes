@@ -1,0 +1,38 @@
+---
+
+- name: Add kubernetes repository
+  template:
+    src: kubernetes.repo.j2
+    dest: /etc/yum.repos.d/kubernetes.repo
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Set SELinux in permissive mode
+  selinux:
+    state: permissive
+    policy: targeted
+
+- name: Install kubernetes
+  yum:
+    name:
+      - kubectl
+      - kubeadm
+      - kubelet
+    state: present
+  notify: Enable and start kubelet service 
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Config sysctl parameters
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: 1 }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: 1 }
+

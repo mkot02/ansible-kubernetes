@@ -1,0 +1,15 @@
+---
+
+# ----------------------------------------------------------------------------
+# PROXY setting
+# ----------------------------------------------------------------------------
+http_proxy: ''
+https_proxy: ''
+no_proxy: ''
+
+# ----------------------------------------------------------------------------
+# Kubernetes settings
+# ----------------------------------------------------------------------------
+kubelet_service: kubelet.service
+k8s_allow_pods_on_master: yes
+k8s_addon_network_url: https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
